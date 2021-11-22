@@ -1,4 +1,5 @@
 from pathlib import Path
+from statistics import mean
 
 from music21 import analysis
 
@@ -9,8 +10,13 @@ from util import *
 
 
 def arrange(s):
+    original_key = s.analyze(key)
     key_difficulties = {}
     for sharps in range(-5,2):
+        distance_to_original_key = abs(sharps - original_key.sharps)
+        sharps_per_instrument = get_sharps_per_instrument(sharps)
+        avg_sharps_per_instrument = mean(sharps_per_instrument.values())
+
         score = transpose_to_key_sig(s, sharps).toWrittenPitch()
         
         for part in score.parts:
@@ -29,7 +35,14 @@ def arrange(s):
         print('Out-of-breath: ', out_of_breath)
         print('Fingering:     ', fingering)
         print('Register:      ', register)
-        difficulty = 0.25 * melodic + 0.15 * embouchure + 0.15 * breathing + 0.1 * out_of_breath + 0.1 * fingering + 0.1 * register
+        difficulty = 0.25 * melodic \
+                + 0.15 * embouchure \
+                + 0.15 * breathing \
+                + 0.1 * out_of_breath \
+                + 0.1 * fingering \
+                + 0.1 * register \
+                + 0.1 * avg_sharps_per_instrument \
+                + 0.05 * distance_to_original_key
         print('\nTotal difficulty: ', difficulty)
         key_difficulties[score] = difficulty
         

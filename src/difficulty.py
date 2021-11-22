@@ -96,9 +96,9 @@ def fingering_difficulty(part):
 # Models depletion of lung air contents over the course of the piece
 # Returns (average breathing difficulty, num. of out of breath instances)
 def breathing_difficulty(part):
-    LOW = {'pp': 35.5, 'p': 35.5, 'mp': 23.5, 'mf': 23.5, 'f': 14.0, 'ff': 10.5}
-    MID = {'pp': 40.0, 'p': 40.0, 'mp': 31.0, 'mf': 31.0, 'f': 21.0, 'ff': 14.5}
-    HIGH = {'pp': 11.0, 'p': 11.0, 'mp': 15.0, 'mf': 15.0, 'f': 10.5, 'ff': 9.0}
+    LOW = {'pp': 35.5, 'p': 29.1, 'mp': 23.5, 'mf': 18.4, 'f': 14.0, 'ff': 10.5}
+    MID = {'pp': 40.0, 'p': 35.8, 'mp': 31.0, 'mf': 26.2, 'f': 21.0, 'ff': 14.5}
+    HIGH = {'pp': 11.0, 'p': 13.4, 'mp': 15.0, 'mf': 13.6, 'f': 10.5, 'ff': 9.0}
 
     total_duration = 0
     out_of_breath_instances = 0
