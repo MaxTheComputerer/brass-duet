@@ -105,9 +105,10 @@ def breathing_difficulty(part):
     total_duration = 0
     out_of_breath_instances = 0
     lung_contents = 1.0
-    difficulty_sum = 0
+    contents_sum = 0
+    notes = part.flatten().notesAndRests
 
-    for element in part.flatten().notesAndRests:
+    for element in notes:
         duration = element.seconds
         if isinstance(element, note.Note):
             dynamic = element.volume.getDynamicContext()
@@ -139,12 +140,11 @@ def breathing_difficulty(part):
             if duration > 0.25:
                 air_replenished = duration - 0.25
                 lung_contents = min(lung_contents + air_replenished, 1)
-        difficulty = 100 - (lung_contents * 100)
-        difficulty_sum += difficulty
+        contents_sum += lung_contents
         total_duration += duration
     
-    # Avg breathing difficulty = total breathing difficulty / duration of piece
-    avg_breathing_difficulty = difficulty_sum / total_duration
+    avg_lung_contents = contents_sum / len(notes)
+    avg_breathing_difficulty = 100 - (avg_lung_contents * 100)
     return (avg_breathing_difficulty, out_of_breath_instances)
 
 # Measure of how tired your lips get
@@ -227,7 +227,14 @@ def calculate_difficulties(score):
         out_of_breath += out_of_breath_
         fingering += fingering_difficulty(part)
         register += pitch_register_difficulty(part)
-    return (melodic, embouchure, breathing, out_of_breath, fingering, register)
+    num_parts = len(score.parts)
+    return (
+        melodic / num_parts,
+        embouchure / num_parts,
+        breathing / num_parts,
+        out_of_breath / num_parts,
+        fingering / num_parts,
+        register / num_parts)
 
 # Calculate overall difficulty score as weighted sum of each difficulty metric
 def overall_difficulty(score):
