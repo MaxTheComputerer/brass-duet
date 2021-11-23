@@ -31,6 +31,9 @@ def get_segments(part):
         elif isinstance(n, (note.Rest, clef.Clef)) and not in_slur:
             segments.append((first, last))
             first = last = None
+    # If we end with a one-note phrase
+    if first is not None and last is None:
+        last = first
     segments.append((first, last))
 
     # Remove the empty sublists given by rests

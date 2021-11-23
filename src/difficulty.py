@@ -1,6 +1,7 @@
 import enum
+import sys
 
-from music21 import pitch, note, dynamics
+from music21 import dynamics, note, pitch
 from music21.interval import Direction, Interval
 
 
@@ -45,6 +46,7 @@ def ensure_passage_in_playable_range(passage):
         else:
             # Too low
             passage.transpose(Interval('P8'))
+    return bool(passage_out_of_range(passage))
 
 
 ############## DIFFICULTY METRICS ##############
@@ -126,7 +128,7 @@ def breathing_difficulty(part):
             # If at the end of a phrase, allow a quick breath without out-of-breath penalty
             slurs = element.getSpannerSites('Slur')
             if slurs and slurs[0].isLast(element):
-                lung_contents = max(lung_contents, 1/3)
+                lung_contents = max(lung_contents, 0.25)
 
             if lung_contents == 0:
                 # Out-of-breath instance
@@ -167,11 +169,11 @@ def embouchure_endurance_difficulty(part):
 
 # Difficulty of each interval transition
 def melodic_interval_difficulty(part):
-    LOW_ASC = [1.0,1.5,1.5,1.5,2.5,2.0,3.5,3.0,4.0,4.0,5.5,5.5,7.0]
-    LOW_DESC = [1.0,1.5,1.5,2.0,2.0,2.5,5.0,6.0,6.5,6.5,8.5,8.5,11.5]
-    MID_ASC = [1.0,1.0,1.3,2.0,2.0,4.5,5.5,5.0,7.5,8.0,9.0,9.5,12.0]
-    MID_DESC = [1.0,3.5,3.5,4.5,4.5,6.5,7.5,7.0,9.0,9.0,10.0,10.5,12.0]
-    HIGH_ASC = [5.8,5.8,6.3,7.8,8.0,8.3,9.5,9.5,11.0,11.0,11.8,11.0,2.5]
+    LOW_ASC =   [1.0,1.5,1.5,1.5,2.5,2.0,3.5,3.0,4.0,4.0,5.5,5.5,7.0]
+    LOW_DESC =  [1.0,1.5,1.5,2.0,2.0,2.5,5.0,6.0,6.5,6.5,8.5,8.5,11.5]
+    MID_ASC =   [1.0,1.0,1.3,2.0,2.0,4.5,5.5,5.0,7.5,8.0,9.0,9.5,12.0]
+    MID_DESC =  [1.0,3.5,3.5,4.5,4.5,6.5,7.5,7.0,9.0,9.0,10.0,10.5,12.0]
+    HIGH_ASC =  [5.8,5.8,6.3,7.8,8.0,8.3,9.5,9.5,11.0,11.0,11.8,11.0,2.5]
     HIGH_DESC = [5.8,6.5,7.0,8.0,8.3,8.5,10.0,9.0,10.0,10.0,12.0,12.0,12.0]
 
     notes = part.flatten().notesAndRests
@@ -191,7 +193,8 @@ def melodic_interval_difficulty(part):
 
         interval = Interval(prev_note, curr_note)
         # Reduce intervals greater than an octave to be within an octave
-        interval_semitones = interval.semitones if interval.semitones <= 12 else interval.semitones % 12
+        interval_semitones = abs(interval.semitones)
+        interval_semitones = interval_semitones if interval_semitones <= 12 else interval_semitones % 12
 
         if note_pitch_register_difficulty(curr_note) >= Fatigue.HIGH:
             if interval.direction == Direction.ASCENDING:

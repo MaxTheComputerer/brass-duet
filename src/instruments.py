@@ -7,6 +7,8 @@ class CustomBrassInstrument(BrassInstrument):
     def __init__(self):
         super().__init__()
 
+        self.midiProgram = 60
+
         self.fingering = {
             54: 123, # F#3
             55: 13,  # G3

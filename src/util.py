@@ -9,9 +9,16 @@ def show(score, format=None):
     else:
         score.show(makeNotation=False)
 
+# Gets a score's key from its key signature, else from key analysis
+def getKey(score):
+    if score['Key']:
+        return score['Key'].first()
+    else:
+        return score.analyze('key')
+
 # Transpose a score to the key with the given number of sharps, preserving key mode
 def transpose_to_key_sig(score, sharps):
-    original_key = score.analyze('key')
+    original_key = getKey(score)
     ks = key.KeySignature(sharps)
     new_key = ks.asKey(original_key.mode)
     i = interval.Interval(original_key.tonic, new_key.tonic)
