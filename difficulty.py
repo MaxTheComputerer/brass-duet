@@ -301,12 +301,12 @@ def part_difficulties(score, part_weights=[0.5,0.5]):
 def normalise_difficulties(difficulties):
     (interval, embouchure, breathing, out_of_breath, fingering, register) = difficulties
     return (
-        interval / 12.0,
-        embouchure / 9.5,
-        breathing / 100,
+        interval / 1.2,
+        embouchure / 0.95,
+        breathing / 10,
         out_of_breath,
-        fingering / 9.5,
-        register / 9.5
+        fingering / 0.95,
+        register / 0.95
     )
 
 # Calculate overall difficulty score as weighted sum of each difficulty metric
