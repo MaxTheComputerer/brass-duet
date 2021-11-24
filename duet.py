@@ -31,8 +31,11 @@ class BrassDuet:
             for part in transposed_score.parts:
                 passages = get_segments(part)
                 for passage in passages:
-                    if ensure_passage_in_playable_range(passage):
-                        out_of_playable_range = True           
+                    out_of_range_first = ensure_passage_in_playable_range(passage)
+                    out_of_range_second = optimise_passage_register(passage)
+                    if out_of_range_first and out_of_range_second:
+                        out_of_playable_range = True
+                        break
             if out_of_playable_range:
                 if printDifficulties:
                     print('Error: Contains notes out of range. Add more phrase marks or reduce range',file=sys.stderr)
@@ -161,5 +164,5 @@ if __name__ == '__main__':
     )
     data_parser.set_defaults(func=data_mode)
 
-    args = parser.parse_args()
+    args = parser.parse_args(['arrange', 'examples\\51.mxl'])
     args.func(args)

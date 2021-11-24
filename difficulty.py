@@ -13,18 +13,25 @@ class Fatigue(enum.IntEnum):
     MID = 5.0
     HIGH = 9.5
 
-# Gives a fatigue score for each pitch register for a given note
+class RegisterPreference(enum.IntEnum):
+    # LOW and MID scores have been swapped to make optimise_passage_register() produce
+    # results in a more appropriate register (lower =/= better)
+    LOW = 5.0
+    MID = 4.25
+    HIGH = 9.5
+
+# Gives a difficulty score for a given note's pitch register
 # Returns 10.0 if above playable range, and -10.0 if below playable range
-def note_pitch_register_difficulty(note):
+def note_pitch_register_difficulty(note, registerDifficulty=Fatigue):
     instrument = note.getInstrument()
     if note.pitch > instrument.highest_written():
         return 10.0
     elif note.pitch >= pitch.Pitch('G5'):
-        return Fatigue.HIGH
+        return registerDifficulty.HIGH
     elif note.pitch >= pitch.Pitch('G4'):
-        return Fatigue.MID
+        return registerDifficulty.MID
     elif note.pitch >= instrument.lowest_written():
-        return Fatigue.LOW
+        return registerDifficulty.LOW
     else:
         return -10.0
 
@@ -49,6 +56,49 @@ def ensure_passage_in_playable_range(passage):
         else:
             # Too low
             passage.transpose(Interval('P8'))
+    return bool(passage_out_of_range(passage))
+
+# Calculates the average register difficulty of all the notes in a passage
+def passage_pitch_register_difficulty(passage):
+    notes = passage.get_notes()
+    total_difficulty = 0
+    for note in notes:
+        total_difficulty += note_pitch_register_difficulty(note, RegisterPreference)
+    return total_difficulty / len(notes)
+
+# Transposes a passage up and down octaves to find its easiest register
+def optimise_passage_register(passage):
+    optimal_octave_transposition = 0
+    current_octave_transposition = 0
+    min_difficulty = passage_pitch_register_difficulty(passage)
+
+    # Transpose up 8ves until it's out of range
+    while not passage_out_of_range(passage):
+        diff = passage_pitch_register_difficulty(passage)
+        if diff < min_difficulty:
+            min_difficulty = diff
+            optimal_octave_transposition = current_octave_transposition
+        passage.transpose(Interval('P8'))
+        current_octave_transposition += 1
+
+    # Reset to 0 transposition
+    while current_octave_transposition > 0:
+        passage.transpose(Interval('P-8'))
+        current_octave_transposition -= 1
+
+    # Transpose down 8ves until it's out of range
+    while not passage_out_of_range(passage):
+        diff = passage_pitch_register_difficulty(passage)
+        if diff < min_difficulty:
+            min_difficulty = diff
+            optimal_octave_transposition = current_octave_transposition
+        passage.transpose(Interval('P-8'))
+        current_octave_transposition -= 1
+
+    # Transpose back up 8ves until we find the optimal again
+    while current_octave_transposition < optimal_octave_transposition:
+        passage.transpose(Interval('P8'))
+        current_octave_transposition += 1
     return bool(passage_out_of_range(passage))
 
 
