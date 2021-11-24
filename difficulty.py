@@ -1,8 +1,11 @@
 import enum
 import sys
+from statistics import mean
 
 from music21 import dynamics, note, pitch
 from music21.interval import Direction, Interval
+
+from util import *
 
 
 class Fatigue(enum.IntEnum):
@@ -52,7 +55,8 @@ def ensure_passage_in_playable_range(passage):
 ############## DIFFICULTY METRICS ##############
 
 
-# Measure of how many notes are in high registers
+# Measure of the proportion of notes that are in high registers
+# Ranges from 4.25 to 9.5
 def pitch_register_difficulty(part):
     total_register_difficulty = 0
     notes = part.flatten().notes
@@ -61,6 +65,8 @@ def pitch_register_difficulty(part):
     # Avg register difficulty = total register difficulty / number of notes
     return total_register_difficulty / len(notes)
 
+# Measure of how difficult the change in fingering is for each note transition
+# Ranges from 0 to 9.5
 def fingering_difficulty(part):
     FINGERING_DIFF = {
         0:   {0: 0.0, 1: 1.0, 2: 1.0, 3: 1.9, 12: 1.5, 13: 3.0, 23: 3.0, 123: 3.5},
@@ -92,11 +98,14 @@ def fingering_difficulty(part):
         total_fingering_difficulty += FINGERING_DIFF[prev_fingering][curr_fingering]
 
     num_of_notes -= num_of_rests
+    if num_of_notes <= 1:
+        return 0.0
     # Avg fingering difficulty = total fingering difficulty / number of sounding-note transitions
     return total_fingering_difficulty / (num_of_notes - 1)
 
 # Models depletion of lung air contents over the course of the piece
 # Returns (average breathing difficulty, num. of out of breath instances)
+# Ranges from 0 to 100
 def breathing_difficulty(part):
     LOW = {'pp': 35.5, 'p': 29.1, 'mp': 23.5, 'mf': 18.4, 'f': 14.0, 'ff': 10.5}
     MID = {'pp': 40.0, 'p': 35.8, 'mp': 31.0, 'mf': 26.2, 'f': 21.0, 'ff': 14.5}
@@ -148,6 +157,7 @@ def breathing_difficulty(part):
     return (avg_breathing_difficulty, out_of_breath_instances)
 
 # Measure of how tired your lips get
+# Ranges from 0 to 9.5
 def embouchure_endurance_difficulty(part):
     total_duration = 0
     total_embouchure_endurance_difficulty = 0
@@ -161,13 +171,14 @@ def embouchure_endurance_difficulty(part):
                 total_embouchure_endurance_difficulty += duration * note_diff
         else:
             # Rests recover at 3 units per second
-            total_embouchure_endurance_difficulty -= duration * 3.0
+            total_embouchure_endurance_difficulty = max(total_embouchure_endurance_difficulty - (duration * 3.0), 0)
 
     # Avg embouchure endurance difficulty = total embouchure endurance difficulty / duration of piece
     return total_embouchure_endurance_difficulty / total_duration
 
 
 # Difficulty of each interval transition
+# Ranges from 1 to 12
 def melodic_interval_difficulty(part):
     LOW_ASC =   [1.0,1.5,1.5,1.5,2.5,2.0,3.5,3.0,4.0,4.0,5.5,5.5,7.0]
     LOW_DESC =  [1.0,1.5,1.5,2.0,2.0,2.5,5.0,6.0,6.5,6.5,8.5,8.5,11.5]
@@ -213,30 +224,78 @@ def melodic_interval_difficulty(part):
                 total_interval_difficulty += LOW_DESC[interval_semitones]
 
     num_of_notes -= num_of_rests
+    if num_of_notes <= 1:
+        return 0.0
     # Avg interval difficulty = total interval difficulty / number of intervallic transitions
     return total_interval_difficulty / (num_of_notes - 1)
 
-# Calculate and return each difficulty metric
-def calculate_difficulties(score):
-    melodic = embouchure = breathing = out_of_breath = fingering = register = 0
-    for part in score.parts:
-        melodic += melodic_interval_difficulty(part)
-        embouchure += embouchure_endurance_difficulty(part)
+
+# Calculate and return each difficulty metric combined for all parts
+# Contribution of each part to the scores is determined by part_weights
+def part_difficulties(score, part_weights=[0.5,0.5]):
+    if len(part_weights) != len(score.parts) or sum(part_weights) != 1.0:
+        print('Error: Invalid part weights entered', file=sys.stderr)
+        return None
+    interval = embouchure = breathing = out_of_breath = fingering = register = 0
+    for i in range(len(score.parts)):
+        part = score.parts[i]
+        interval += part_weights[i] * melodic_interval_difficulty(part)
+        embouchure += part_weights[i] * embouchure_endurance_difficulty(part)
         (breathing_, out_of_breath_) = breathing_difficulty(part)
-        breathing += breathing_
-        out_of_breath += out_of_breath_
-        fingering += fingering_difficulty(part)
-        register += pitch_register_difficulty(part)
-    num_parts = len(score.parts)
+        breathing += part_weights[i] * breathing_
+        out_of_breath += part_weights[i] * out_of_breath_
+        fingering += part_weights[i] * fingering_difficulty(part)
+        register += part_weights[i] * pitch_register_difficulty(part)
+    return (interval, embouchure, breathing, out_of_breath, fingering, register)
+
+def normalise_difficulties(difficulties):
+    (interval, embouchure, breathing, out_of_breath, fingering, register) = difficulties
     return (
-        melodic / num_parts,
-        embouchure / num_parts,
-        breathing / num_parts,
-        out_of_breath / num_parts,
-        fingering / num_parts,
-        register / num_parts)
+        interval / 12.0,
+        embouchure / 9.5,
+        breathing / 100,
+        out_of_breath,
+        fingering / 9.5,
+        register / 9.5
+    )
 
 # Calculate overall difficulty score as weighted sum of each difficulty metric
-def overall_difficulty(score):
-    (melodic, embouchure, breathing, out_of_breath, fingering, register) = calculate_difficulties(score)
-    return 0.25 * melodic + 0.15 * embouchure + 0.15 * breathing + 0.1 * out_of_breath + 0.1 * fingering + 0.1 * register
+def overall_difficulty(score, original_key, sharps, printDifficulties=True):
+    distance_to_original_key = abs(sharps - original_key.sharps)
+    sharps_per_instrument = get_sharps_per_instrument(sharps)
+    avg_sharps_per_instrument = mean([abs(v) for v in sharps_per_instrument.values()])
+
+    difficulties = normalise_difficulties(part_difficulties(score))
+    (interval, embouchure, breathing, out_of_breath, fingering, register) = difficulties
+
+    total_difficulty = 0.25 * interval \
+        + 0.15 * embouchure \
+        + 0.1 * breathing \
+        + 0.1 * out_of_breath \
+        + 0.1 * fingering \
+        + 0.15 * register \
+        + 0.1 * avg_sharps_per_instrument \
+        + 0.05 * distance_to_original_key
+
+    if printDifficulties:
+        print('Interval:         ', interval)
+        print('Embouchure:       ', embouchure)
+        print('Breathing:        ', breathing)
+        print('Out-of-breath:    ', out_of_breath)
+        print('Fingering:        ', fingering)
+        print('Register:         ', register)
+        print('Avg sharps/flats: ', avg_sharps_per_instrument)
+        print('Key distance:     ', distance_to_original_key)
+        print('\nTotal difficulty: ', total_difficulty)
+
+    return (
+        interval,
+        embouchure,
+        breathing,
+        out_of_breath,
+        fingering,
+        register,
+        avg_sharps_per_instrument,
+        distance_to_original_key,
+        total_difficulty
+    )
