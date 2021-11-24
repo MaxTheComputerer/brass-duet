@@ -131,7 +131,10 @@ def arrange_mode(args):
     if args.save:
         duet.save()
     else:
-        duet.show()
+        if args.transposable:
+            duet.show(transposable=args.transposable)
+        else:
+            duet.show()
 
 def data_mode(args):
     pieces = list(EXAMPLES_DIR.glob('*.mxl'))
@@ -152,6 +155,12 @@ if __name__ == '__main__':
         dest='save',
         action="store_true",
         help="Save arrangement to output file")
+    arrange_parser.add_argument(
+        '-t',
+        '--transposable',
+        dest='transposable',
+        action="store_true",
+        help="Show score with makeNotation=False to allow MuseScore to use transposing instruments correctly")
     arrange_parser.set_defaults(func=arrange_mode)
 
     data_parser = subparsers.add_parser('generate-data', help="Generate difficulty metrics for all files in \"examples\" directory")
@@ -164,5 +173,5 @@ if __name__ == '__main__':
     )
     data_parser.set_defaults(func=data_mode)
 
-    args = parser.parse_args(['arrange', 'examples\\51.mxl'])
+    args = parser.parse_args()
     args.func(args)
