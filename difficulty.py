@@ -20,15 +20,19 @@ class RegisterPreference(enum.IntEnum):
     MID = 4.25
     HIGH = 9.5
 
+class RegisterBoundaries:
+    MID_HIGH = pitch.Pitch('E5')
+    LOW_MID = pitch.Pitch('E4')
+
 # Gives a difficulty score for a given note's pitch register
 # Returns 10.0 if above playable range, and -10.0 if below playable range
 def note_pitch_register_difficulty(note, registerDifficulty=Fatigue):
     instrument = note.getInstrument()
     if note.pitch > instrument.highest_written():
         return 10.0
-    elif note.pitch >= pitch.Pitch('G5'):
+    elif note.pitch >= RegisterBoundaries.MID_HIGH:
         return registerDifficulty.HIGH
-    elif note.pitch >= pitch.Pitch('G4'):
+    elif note.pitch >= RegisterBoundaries.LOW_MID:
         return registerDifficulty.MID
     elif note.pitch >= instrument.lowest_written():
         return registerDifficulty.LOW
