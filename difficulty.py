@@ -8,12 +8,12 @@ from music21.interval import Direction, Interval
 from util import *
 
 
-class Fatigue(enum.IntEnum):
+class Fatigue():
     LOW = 4.25
     MID = 5.0
     HIGH = 9.5
 
-class RegisterPreference(enum.IntEnum):
+class RegisterPreference():
     # LOW and MID scores have been swapped to make optimise_passage_register() produce
     # results in a more appropriate register (lower =/= better)
     LOW = 5.0
