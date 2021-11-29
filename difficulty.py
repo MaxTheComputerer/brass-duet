@@ -1,4 +1,3 @@
-import enum
 import sys
 from statistics import mean
 
@@ -175,8 +174,8 @@ def breathing_difficulty(part):
         duration = element.seconds
         if isinstance(element, note.Note):
             dynamic = element.volume.getDynamicContext()
-            if not dynamic:
-                # Default to mf if no dynamics are present
+            if not dynamic or dynamic.value not in LOW:
+                # Default to mf if no or unknown dynamics are present
                 dynamic = dynamics.Dynamic('mf')
 
             note_diff = note_pitch_register_difficulty(element)
@@ -315,7 +314,7 @@ def normalise_difficulties(difficulties):
 
 # Calculate overall difficulty score as weighted sum of each difficulty metric
 def overall_difficulty(score, original_key, sharps, printDifficulties=True):
-    distance_to_original_key = abs(sharps - original_key.sharps)
+    distance_to_original_key = key_distance(original_key.sharps, sharps)
     sharps_per_instrument = get_sharps_per_instrument(sharps)
     avg_sharps_per_instrument = mean([abs(v) for v in sharps_per_instrument.values()])
 

@@ -17,6 +17,10 @@ def getKey(score):
     else:
         return score.analyze('key')
 
+# Calculate distance between two key signatures (given in units of sharps) according to the circle of fifths
+def key_distance(original_key, new_key):
+    return min(abs(original_key - new_key), 12 - abs(original_key - new_key))
+
 # Transpose a score to the key with the given number of sharps, preserving key mode
 def transpose_to_key_sig(score, sharps):
     original_key = getKey(score)
